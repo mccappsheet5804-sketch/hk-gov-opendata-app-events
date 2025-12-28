@@ -152,11 +152,13 @@
             overflow: hidden;
             transition: max-height 0.3s ease, padding 0.3s ease;
             border-radius: 0 0 6px 6px;
+            display: none;
         }
 
         .data-content.active {
             padding: 15px;
             overflow-y: auto;
+            display: block;
         }
 
         .search-box {
@@ -1329,8 +1331,8 @@
 
         // Filter by rectangle
         function filterByRectangle(feature, source) {
-            showNotification('請使用矩形繪圖工具選擇區域');
-            document.getElementById('drawRectangleBtn').click();
+            // showNotification('請使用矩形繪圖工具選擇區域');
+            // document.getElementById('drawRectangleBtn').click();
         }
 
         // Filter features within rectangle
