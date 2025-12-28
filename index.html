@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>「活動類別」查詢系統</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c6c91, #2c3e50);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 i {
+            color: #ffcc00;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            max-width: 800px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Accordion Styles */
+        .accordion-panel {
+            width: 400px;
+            background-color: white;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+            z-index: 500;
+            transition: transform 0.3s ease;
+        }
+
+        .accordion {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .accordion-item {
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e0e0e0;
+        }
+
+        .accordion-header {
+            background-color: #2c6c91;
+            color: white;
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .accordion-header:hover {
+            background-color: #1a5c7a;
+        }
+
+        .accordion-header.active {
+            background-color: #2c3e50;
+        }
+
+        .accordion-content {
+            background-color: white;
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .accordion-content.active {
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        /* Data Source Accordion Styles */
+        .data-accordion {
+            margin-bottom: 10px;
+        }
+
+        .data-header {
+            background-color: #4a90e2;
+            color: white;
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            transition: background-color 0.2s;
+        }
+
+        .data-header:hover {
+            background-color: #3a80d2;
+        }
+
+        .data-header.active {
+            background-color: #2c6c91;
+        }
+
+        .data-content {
+            background-color: #f8f9fa;
+            padding: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .data-content.active {
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #2c6c91;
+        }
+
+        .data-item {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .data-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #4a90e2;
+        }
+
+        .data-item.active {
+            border-color: #ffcc00;
+            background-color: #fff9e6;
+        }
+
+        .data-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .data-details {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .data-detail-item {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .data-detail-item i {
+            color: #2c6c91;
+            margin-right: 8px;
+            margin-top: 3px;
+            width: 16px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .btn {
+            background-color: #2c6c91;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background-color: #1a5c7a;
+        }
+
+        .btn.active {
+            background-color: #2c3e50;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-success {
+            background-color: #27ae60;
+        }
+
+        .btn-success:hover {
+            background-color: #219653;
+        }
+
+        .btn-warning {
+            background-color: #f39c12;
+        }
+
+        .btn-warning:hover {
+            background-color: #d68910;
+        }
+
+        .info-box {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2c6c91;
+            font-size: 0.9rem;
+        }
+
+        .info-box h4 {
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        /* Map Styles */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Footer Styles */
+        .footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 6px 20px;
+            text-align: center;
+            font-size: 0.85rem;
+            border-top: 1px solid #4a6491;
+            z-index: 1000;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .footer-links a {
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: #3498db;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .accordion-panel {
+                width: 100%;
+                height: 40vh;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .header h1 {
+                font-size: 1.3rem;
+            }
+
+            .header p {
+                font-size: 0.85rem;
+            }
+
+            .accordion-header {
+                padding: 12px 15px;
+                font-size: 0.95rem;
+            }
+
+            .btn {
+                padding: 10px 15px;
+                font-size: 0.95rem;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+            }
+
+            .footer-links {
+                justify-content: center;
+            }
+        }
+
+        /* For very small screens like iPhone SE */
+        @media (max-width: 375px) {
+            .header {
+                padding: 12px 15px;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .header p {
+                font-size: 0.8rem;
+            }
+
+            .accordion {
+                padding: 10px;
+            }
+
+            .accordion-header {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            .accordion-content.active {
+                padding: 15px;
+            }
+
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .footer {
+                padding: 10px 15px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Stats Display */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding: 10px 0;
+            border-top: 1px dashed #ddd;
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        /* Toggle panel button for mobile */
+        .panel-toggle {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .panel-toggle {
+                display: block;
+            }
+
+            .accordion-panel.collapsed {
+                transform: translateY(-100%);
+                height: 0;
+                overflow: hidden;
+            }
+        }
+
+        /* Legend */
+        .legend {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2c6c91;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Data Counter */
+        .data-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+        }
+
+        .item-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #4a90e2;
+            color: white;
+            border-radius: 10px;
+            padding: 1px 8px;
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+
+        /* Data source colors */
+        .color-1 {
+            background-color: #ff6b6b;
+        }
+
+        .color-2 {
+            background-color: #4a90e2;
+        }
+
+        .color-3 {
+            background-color: #27ae60;
+        }
+
+        .color-4 {
+            background-color: #f39c12;
+        }
+
+        .color-5 {
+            background-color: #9b59b6;
+        }
+
+        .color-6 {
+            background-color: #e74c3c;
+        }
+
+        .color-7 {
+            background-color: #3498db;
+        }
+
+        .color-8 {
+            background-color: #1abc9c;
+        }
+
+        .color-9 {
+            background-color: #e67e22;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1><i class="fas fa-map-marked-alt"></i> 「活動類別」查詢系統</h1>
+        <p>整合多個政府部門的開放數據，提供一站式地圖查詢服務</p>
+    </div>
+
+    <div class="container">
+        <button class="panel-toggle" id="panelToggle" style="display:none">
+            <i class="fas fa-bars"></i> 控制面板
+        </button>
+
+        <div class="accordion-panel" id="accordionPanel">
+            <div class="accordion">
+                <!-- Data Sources List -->
+                <div class="accordion-item">
+                    <div class="accordion-header active" id="headerDataSources">
+                        <span><i class="fas fa-database"></i> 數據源列表</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content active" id="contentDataSources">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" class="search-input" placeholder="搜尋數據內容...">
+                        </div>
+
+                        <div class="info-box">
+                            <h4><i class="fas fa-info-circle"></i> 使用說明</h4>
+                            <p>1. 點擊數據源展開查看詳細內容</p>
+                            <p>2. 點擊項目在地圖上顯示詳細位置</p>
+                            <p>3. 使用搜尋框快速查找特定項目</p>
+                            <p>4. 部分數據源需要繪製矩形區域來篩選數據</p>
+                        </div>
+
+                        <div class="stats">
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalItems">0</div>
+                                <div class="stat-label">總項目數</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalSources">9</div>
+                                <div class="stat-label">數據源</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="visibleItems">0</div>
+                                <div class="stat-label">顯示中</div>
+                            </div>
+                        </div>
+
+                        <div id="dataSourcesList">
+                            <!-- Data sources will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Controls -->
+                <div class="accordion-item">
+                    <div class="accordion-header" id="headerControls">
+                        <span><i class="fas fa-tools"></i> 地圖控制</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content" id="contentControls">
+                        <div class="control-group">
+                            <label><i class="fas fa-map"></i> 底圖樣式</label>
+                            <select id="baseMapSelect" class="btn" style="padding: 10px;">
+                                <option value="OpenStreetMap">OpenStreetMap</option>
+                                <option value="地形圖">地形圖</option>
+                                <option value="衛星圖像">衛星圖像</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label><i class="fas fa-search"></i> 縮放控制</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <button class="btn" id="zoomInBtn" style="width: auto; flex: 1;">
+                                    <i class="fas fa-search-plus"></i> 放大
+                                </button>
+                                <button class="btn" id="zoomOutBtn" style="width: auto; flex: 1;">
+                                    <i class="fas fa-search-minus"></i> 縮小
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label><i class="fas fa-location-arrow"></i> 視圖控制</label>
+                            <button class="btn" id="resetViewBtn">
+                                <i class="fas fa-globe-asia"></i> 重置至香港全境
+                            </button>
+                        </div>
+
+                        <div class="control-group">
+                            <label><i class="fas fa-draw-polygon"></i> 繪圖工具</label>
+                            <button class="btn btn-warning" id="drawRectangleBtn">
+                                <i class="fas fa-vector-square"></i> 繪製矩形篩選區域
+                            </button>
+                            <button class="btn btn-danger" id="clearDrawBtn" style="display: none;">
+                                <i class="fas fa-trash"></i> 清除繪圖
+                            </button>
+                        </div>
+
+                        <div class="control-group">
+                            <label><i class="fas fa-layer-group"></i> 圖層控制</label>
+                            <div id="layerControls">
+                                <!-- Layer checkboxes will be added here -->
+                            </div>
+                        </div>
+
+                        <div class="legend">
+                            <label><i class="fas fa-layer-group"></i> 圖例</label>
+                            <div class="legend-item">
+                                <div class="legend-color color-1"></div>
+                                <span>射箭場</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-2"></div>
+                                <span>羽毛球場</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-3"></div>
+                                <span>燒烤區</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-4"></div>
+                                <span>的士站</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-5"></div>
+                                <span>遠足徑</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-6"></div>
+                                <span>食物業牌照</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-7"></div>
+                                <span>食肆牌照</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-8"></div>
+                                <span>咪錶泊車位</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color color-9"></div>
+                                <span>停車場</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>正在載入數據...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-copyright">
+                &copy; 2024 「活動類別」查詢系統<br />數據由香港特別行政區政府提供
+            </div>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+        window.isTerminated = false;
+
+        const PROXY_URL = "https://cors-anywhere.herokuapp.com";
+
+        // Initialize variables
+        let map;
+        let drawControl;
+        let drawnItems = new L.FeatureGroup();
+        let currentRectangle = null;
+        let selectedItem = null;
+
+        // Data sources configuration
+        const dataSources = [
+            {
+                id: 'ar',
+                name: 'hk-gov-opendata-app-events-ar',
+                displayName: '（康樂及文化事務署）射箭場',
+                url: 'https://portal.csdi.gov.hk/server/services/common/lcsd_rcd_1670383274728_87541/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=geotagging&outputFormat=geojson',
+                color: 'color-1',
+                showOnLoad: false,
+                grouping: ['District_cn', 'Name_cn'],
+                searchFields: ['Name_cn', 'Address_cn'],
+                eventHandlers: {
+                    onLoad: populateListAndShowOnMap,
+                    onItemClick: drawPointAndZoom
+                }
+            },
+            {
+                id: 'badminton',
+                name: 'hk-gov-opendata-app-events-badminton',
+                displayName: '（康樂及文化事務署）羽毛球場',
+                url: 'https://data.smartplay.lcsd.gov.hk/rest/cms/api/v1/publ/contents/open-data/badminton/file',
+                color: 'color-2',
+                showOnLoad: false,
+                grouping: ['District_Name_TC', 'Venue_Name_TC'],
+                searchFields: ['District_Name_TC', 'Venue_Name_TC'],
+                eventHandlers: {
+                    onLoad: populateListAndShowOnMap,
+                    onItemClick: drawPointAndZoom
+                }
+            },
+            {
+                id: 'bbq',
+                name: 'hk-gov-opendata-app-events-bbq',
+                displayName: '（康樂及文化事務署）燒烤區',
+                url: 'https://portal.csdi.gov.hk/server/services/common/archsd_rcd_1637294600558_18821/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=CapitalProjetsUnderConstruction&outputFormat=geojson',
+                color: 'color-3',
+                showOnLoad: false,
+                grouping: ['DATASET_TC', 'DistrictTC', 'NameTC'],
+                searchFields: ['DistrictTC', 'NameTC'],
+                eventHandlers: {
+                    onLoad: populateListAndShowOnMap,
+                    onItemClick: drawPointAndZoom
+                }
+            },
+            {
+                id: 'taxi',
+                name: 'hk-gov-opendata-app-events-taxi',
+                displayName: '（運輸署）的士站',
+                url: 'https://portal.csdi.gov.hk/server/services/common/td_rcd_1697081907714_17556/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=Taxi_Stands&outputFormat=geojson',
+                color: 'color-4',
+                showOnLoad: false,
+                grouping: ['Status_TC', 'Region_TC', 'District_TC', 'Location_TC'],
+                searchFields: ['Location_TC'],
+                eventHandlers: {
+                    onLoad: populateListAndShowOnMap,
+                    onItemClick: drawPointAndZoom
+                }
+            },
+            {
+                id: 'hiking',
+                name: 'hk-gov-opendata-app-events-hikingtrails',
+                displayName: '（漁農自然護理署）遠足徑',
+                url: 'https://portal.csdi.gov.hk/server/services/common/afcd_rcd_1665568199103_4360/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=Hiking_Trails&outputFormat=geojson',
+                color: 'color-5',
+                showOnLoad: false,
+                grouping: ['Type_Ch', 'Difficult_Ch', 'Region_Ch', 'C_NAME', 'Trail_name_Ch'],
+                searchFields: ['Trail_name_Ch', 'C_NAME'],
+                eventHandlers: {
+                    onLoad: populateListOnly,
+                    onItemClick: drawLineAndZoom
+                }
+            },
+            {
+                id: 'food',
+                name: 'hk-gov-opendata-app-events-foodlicenses',
+                displayName: '（食物環境衞生署）食物業處所牌照',
+                url: 'https://portal.csdi.gov.hk/server/services/common/fehd_rcd_1630036111498_75446/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=FEHD_FL&outputFormat=geojson&maxFeatures=500&srsName=EPSG:4326&filter=%3CFilter%3E%3CIntersects%3E%3CPropertyName%3ESHAPE%3C/PropertyName%3E%3Cgml:Envelope%20srsName=%27EPSG:4326%27%3E%3Cgml:lowerCorner%3E22.325182184089847%20114.21722209149547%3C/gml:lowerCorner%3E%3Cgml:upperCorner%3E22.381732412047064%20114.03529789824675%3C/gml:upperCorner%3E%3C/gml:Envelope%3E%3C/Intersects%3E%3C/Filter%3E#',
+                color: 'color-6',
+                showOnLoad: false,
+                grouping: ['DATASET_TC', 'NAME_TC', 'SEARCH01_TC', 'NSEARCH03_TC'],
+                searchFields: ['NAME_TC', 'ADDRESS_TC'],
+                eventHandlers: {
+                    onLoad: populateListOnly,
+                    onItemClick: filterByRectangle
+                }
+            },
+            {
+                id: 'restaurant',
+                name: 'hk-gov-opendata-app-events-restaurantlicenses',
+                displayName: '（食物環境衞生署）食肆牌照',
+                url: 'https://portal.csdi.gov.hk/server/services/common/fehd_rcd_1630036390312_58893/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=FEHD_RL&outputFormat=geojson&maxFeatures=500&srsName=EPSG:4326&filter=%3CFilter%3E%3CIntersects%3E%3CPropertyName%3ESHAPE%3C/PropertyName%3E%3Cgml:Envelope%20srsName=%27EPSG:4326%27%3E%3Cgml:lowerCorner%3E22.325182184089847%20114.21722209149547%3C/gml:lowerCorner%3E%3Cgml:upperCorner%3E22.381732412047064%20114.03529789824675%3C/gml:upperCorner%3E%3C/gml:Envelope%3E%3C/Intersects%3E%3C/Filter%3E#',
+                color: 'color-7',
+                showOnLoad: false,
+                grouping: ['DATASET_TC', 'NAME_TC', 'SEARCH01_TC', 'NSEARCH03_TC'],
+                searchFields: ['NAME_TC', 'ADDRESS_TC'],
+                eventHandlers: {
+                    onLoad: populateListOnly,
+                    onItemClick: filterByRectangle
+                }
+            },
+            {
+                id: 'parking',
+                name: 'hk-gov-opendata-app-events-merteredparkingspaces',
+                displayName: '（運輸署）咪錶的泊車位',
+                url: 'https://portal.csdi.gov.hk/server/services/common/td_rcd_1638930345315_81787/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=parkingspaces&outputFormat=geojson&maxFeatures=500&srsName=EPSG:4326&filter=%3CFilter%3E%3CIntersects%3E%3CPropertyName%3ESHAPE%3C/PropertyName%3E%3Cgml:Envelope%20srsName=%27EPSG:4326%27%3E%3Cgml:lowerCorner%3E22.15%20113.81%3C/gml:lowerCorner%3E%3Cgml:upperCorner%3E22.62%20114.45%3C/gml:upperCorner%3E%3C/gml:Envelope%3E%3C/Intersects%3E%3C/Filter%3E',
+                color: 'color-8',
+                showOnLoad: false,
+                grouping: ['Region_tc', 'District_tc', 'SubDistrict_tc', 'Street_tc', 'SectionOfStreet_tc'],
+                searchFields: ['Street_tc', 'SectionOfStreet_tc'],
+                eventHandlers: {
+                    onLoad: populateListOnly,
+                    onItemClick: filterByRectangle
+                }
+            },
+            {
+                id: 'carpark',
+                name: 'hk-gov-opendata-app-events-carparks',
+                displayName: '（運輸署）停車場',
+                url: 'https://portal.csdi.gov.hk/server/services/common/td_rcd_1638948197838_85279/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=basic_info_all&outputFormat=geojson&maxFeatures=1&srsName=EPSG:4326&filter=%3CFilter%3E%3CIntersects%3E%3CPropertyName%3ESHAPE%3C/PropertyName%3E%3Cgml:Envelope%20srsName=%27EPSG:4326%27%3E%3Cgml:lowerCorner%3E22.15%20113.81%3C/gml:lowerCorner%3E%3Cgml:upperCorner%3E22.62%20114.45%3C/gml:upperCorner%3E%3C/gml:Envelope%3E%3C/Intersects%3E%3C/Filter%3E',
+                color: 'color-9',
+                showOnLoad: false,
+                grouping: ['district_tc', 'name_tc'],
+                searchFields: ['name_tc', 'displayAddress_tc'],
+                eventHandlers: {
+                    onLoad: populateListOnly,
+                    onItemClick: filterByRectangle
+                }
+            }
+        ];
+
+        // Data storage
+        const dataStore = {};
+        const mapLayers = {};
+        const allItems = [];
+
+        // Add base layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
+        });
+
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        // Add layer control
+        const baseLayers = {
+            "OpenStreetMap": osmLayer,
+            "地形圖": topoLayer,
+            "衛星圖像": satelliteLayer
+        };
+        let currentTileLayer = baseLayers["OpenStreetMap"];
+
+        // Initialize map when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            initMap();
+            setupAccordion();
+            setupEventListeners();
+            setupLayerControls();
+            loadAllDataSources();
+        });
+
+        // Initialize the map
+        function initMap() {
+            // Set initial view to Hong Kong
+            map = L.map('map', { zoomControl: false }).setView([22.3193, 114.1694], 11);
+
+            // Add default layer
+            currentTileLayer.addTo(map);
+
+            // Initialize draw control
+            drawnItems.addTo(map);
+
+            drawControl = new L.Control.Draw({
+                draw: {
+                    polygon: false,
+                    polyline: false,
+                    circle: false,
+                    circlemarker: false,
+                    marker: false,
+                    rectangle: {
+                        shapeOptions: {
+                            color: '#f39c12',
+                            weight: 2,
+                            fillOpacity: 0.1
+                        }
+                    }
+                },
+                edit: {
+                    featureGroup: drawnItems
+                }
+            });
+
+            map.addControl(drawControl);
+
+            // Handle draw events
+            map.on(L.Draw.Event.CREATED, function (event) {
+                const layer = event.layer;
+                drawnItems.clearLayers();
+                drawnItems.addLayer(layer);
+                currentRectangle = layer;
+                document.getElementById('clearDrawBtn').style.display = 'block';
+
+                // Filter features within rectangle for relevant data sources
+                filterFeaturesByRectangle(layer.getBounds());
+            });
+        }
+
+        // Setup accordion functionality
+        function setupAccordion() {
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', function (e) {
+                    const content = this.nextElementSibling;
+                    const isActive = this.classList.contains('active');
+
+                    // Close all accordion items
+                    accordionHeaders.forEach(h => {
+                        h.classList.remove('active');
+                        h.querySelector('.fa-chevron-down').style.transform = 'rotate(0deg)';
+                    });
+
+                    document.querySelectorAll('.accordion-content').forEach(c => {
+                        c.classList.remove('active');
+                    });
+
+                    // Open clicked item if it was not active
+                    if (!isActive) {
+                        this.classList.add('active');
+                        content.classList.add('active');
+                        this.querySelector('.fa-chevron-down').style.transform = 'rotate(180deg)';
+                    }
+
+                    map.invalidateSize();
+                });
+            });
+        }
+
+        // Setup button event listeners
+        function setupEventListeners() {
+            // Map controls
+            document.getElementById('zoomInBtn').addEventListener('click', function () {
+                map.zoomIn();
+            });
+
+            document.getElementById('zoomOutBtn').addEventListener('click', function () {
+                map.zoomOut();
+            });
+
+            document.getElementById('resetViewBtn').addEventListener('click', function () {
+                map.setView([22.3193, 114.1694], 11);
+            });
+
+            // Base map selector
+            document.getElementById('baseMapSelect').addEventListener('change', function (e) {
+                // Remove current layer
+                map.removeLayer(currentTileLayer);
+
+                // Add new layer
+                currentTileLayer = baseLayers[e.target.value];
+                currentTileLayer.addTo(map);
+            });
+
+            // Search input
+            document.getElementById('searchInput').addEventListener('input', function (e) {
+                filterDataItems(e.target.value);
+            });
+
+            // Draw rectangle button
+            document.getElementById('drawRectangleBtn').addEventListener('click', function () {
+                new L.Draw.Rectangle(map, drawControl.options.draw.rectangle).enable();
+                showNotification('請在地圖上繪製矩形區域');
+            });
+
+            // Clear draw button
+            document.getElementById('clearDrawBtn').addEventListener('click', function () {
+                drawnItems.clearLayers();
+                currentRectangle = null;
+                this.style.display = 'none';
+
+                // Reset all data sources
+                dataSources.forEach(source => {
+                    if (dataStore[source.id]) {
+                        showDataOnMap(source.id);
+                    }
+                });
+            });
+
+            // Handle mobile panel toggle
+            const panelToggle = document.getElementById('panelToggle');
+            const accordionPanel = document.getElementById('accordionPanel');
+
+            panelToggle.addEventListener('click', function () {
+                accordionPanel.classList.toggle('collapsed');
+                panelToggle.innerHTML = accordionPanel.classList.contains('collapsed')
+                    ? '<i class="fas fa-bars"></i> 顯示控制面板'
+                    : '<i class="fas fa-bars"></i> 隱藏控制面板';
+            });
+        }
+
+        // Setup layer controls
+        function setupLayerControls() {
+            const container = document.getElementById('layerControls');
+            dataSources.forEach(source => {
+                const div = document.createElement('div');
+                div.style.cssText = 'margin-bottom: 5px; display: flex; align-items: center;';
+                div.innerHTML = `
+                    <input type="checkbox" id="layer-${source.id}" ${source.showOnLoad ? 'checked' : ''} 
+                           style="margin-right: 8px;" onchange="toggleLayer('${source.id}', this.checked)">
+                    <label for="layer-${source.id}" style="cursor: pointer; font-size: 0.9rem;">
+                        <span class="legend-color ${source.color}" style="width: 12px; height: 12px; display: inline-block; margin-right: 5px;"></span>
+                        ${source.displayName}
+                    </label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Toggle layer visibility
+        function toggleLayer(sourceId, visible) {
+            const source = dataSources.find(s => s.id === sourceId);
+            if (!source) return;
+
+            if (visible && dataStore[sourceId]) {
+                showDataOnMap(sourceId);
+            } else if (mapLayers[sourceId]) {
+                map.removeLayer(mapLayers[sourceId]);
+            }
+        }
+
+        // Load all data sources
+        async function loadAllDataSources() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.style.display = 'block';
+
+            try {
+                for (const source of dataSources) {
+                    await loadDataSource(source);
+                }
+
+                // Render data sources list
+                renderDataSourcesList();
+
+                // Update stats
+                updateStats();
+
+            } catch (error) {
+                console.error('Error loading data sources:', error);
+                showNotification('載入數據時發生錯誤');
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        // Load individual data source
+        async function loadDataSource(source) {
+            try {
+                const response = await fetch(`${PROXY_URL}/${source.url}`);
+                if (!response.ok) {
+                    if (!isTerminated) {
+                        window.isTerminated = true;
+                        document.querySelector('body').style.display = 'none';
+                        alert(`無法載入 ${source.displayName}，請啟用 PROXY: ${PROXY_URL}。`);
+                        window.open(`${PROXY_URL}/corsdemo`, '_blank');
+                    }
+                    return;
+                }
+
+                let data;
+                if (source.id === 'badminton') {
+                    // Badminton data is not GeoJSON format
+                    const jsonData = await response.json();
+                    data = {
+                        type: 'FeatureCollection',
+                        features: jsonData.map(item => ({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [parseFloat(item.Venue_Longitude), parseFloat(item.Venue_Latitude)]
+                            },
+                            properties: item
+                        }))
+                    };
+                } else {
+                    data = await response.json();
+                }
+
+                dataStore[source.id] = data;
+
+                // Call event handler
+                if (source.eventHandlers.onLoad) {
+                    source.eventHandlers.onLoad(source.id);
+                }
+
+                console.log(`Loaded ${source.displayName}: ${data.features ? data.features.length : data.length} items`);
+
+            } catch (error) {
+                console.error(`Error loading ${source.displayName}:`, error);
+                showNotification(`無法載入 ${source.displayName} 數據`);
+            }
+        }
+
+        // Populate list and show on map
+        function populateListAndShowOnMap(sourceId) {
+            const source = dataSources.find(s => s.id === sourceId);
+            if (!source || !dataStore[sourceId]) return;
+
+            showDataOnMap(sourceId);
+        }
+
+        // Populate list only
+        function populateListOnly(sourceId) {
+            // Data will be shown when rectangle is drawn
+            console.log(`${sourceId} data loaded, waiting for rectangle selection`);
+        }
+
+        // Show data on map
+        function showDataOnMap(sourceId) {
+            const source = dataSources.find(s => s.id === sourceId);
+            if (!source || !dataStore[sourceId]) return;
+
+            // Remove existing layer
+            if (mapLayers[sourceId]) {
+                map.removeLayer(mapLayers[sourceId]);
+            }
+
+            const layer = L.layerGroup();
+            const features = dataStore[sourceId].features || [];
+
+            features.forEach(feature => {
+                let marker;
+
+                if (source.id === 'hiking') {
+                    // MultiLineString for hiking trails
+                    if (feature.geometry.type === 'MultiLineString') {
+                        const polyline = L.polyline(feature.geometry.coordinates.map(ring =>
+                            ring.map(coord => [coord[1], coord[0]])
+                        ), {
+                            color: getColorByIndex(dataSources.findIndex(s => s.id === sourceId)),
+                            weight: 3,
+                            opacity: 0.7
+                        });
+
+                        const popupContent = createPopupContent(source, feature);
+                        polyline.bindPopup(popupContent);
+                        layer.addLayer(polyline);
+                    }
+                } else {
+                    // Point data
+                    let lat, lng;
+                    if (source.id === 'badminton') {
+                        lat = feature.geometry.coordinates[1];
+                        lng = feature.geometry.coordinates[0];
+                    } else {
+                        lat = feature.geometry.coordinates[1];
+                        lng = feature.geometry.coordinates[0];
+                    }
+
+                    if (isNaN(lat) || isNaN(lng)) return;
+                    marker = L.circleMarker([lat, lng], {
+                        radius: 8,
+                        fillColor: getColorByIndex(dataSources.findIndex(s => s.id === sourceId)),
+                        color: '#ffffff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+
+                    const popupContent = createPopupContent(source, feature);
+                    marker.bindPopup(popupContent);
+                    layer.addLayer(marker);
+                }
+            });
+
+            mapLayers[sourceId] = layer;
+
+            // Add to map if checkbox is checked
+            const checkbox = document.getElementById(`layer-${sourceId}`);
+            if (checkbox && checkbox.checked) {
+                layer.addTo(map);
+            }
+        }
+
+        // Draw point and zoom
+        function drawPointAndZoom(feature, source) {
+            // Clear previous selection
+            if (selectedItem) {
+                map.removeLayer(selectedItem);
+            }
+
+            const lat = feature.geometry.coordinates[1];
+            const lng = feature.geometry.coordinates[0];
+
+            selectedItem = L.circleMarker([lat, lng], {
+                radius: 12,
+                fillColor: '#ffcc00',
+                color: '#ff9900',
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(map);
+
+            // Zoom to feature
+            map.setView([lat, lng], 14);
+
+            // Open popup
+            const popupContent = createPopupContent(source, feature);
+            selectedItem.bindPopup(popupContent).openPopup();
+        }
+
+        // Draw line and zoom
+        function drawLineAndZoom(feature, source) {
+            // Clear previous selection
+            if (selectedItem) {
+                map.removeLayer(selectedItem);
+            }
+
+            if (feature.geometry.type === 'MultiLineString') {
+                const bounds = L.latLngBounds();
+                feature.geometry.coordinates.forEach(ring => {
+                    ring.forEach(coord => {
+                        bounds.extend([coord[1], coord[0]]);
+                    });
+                });
+
+                selectedItem = L.polyline(feature.geometry.coordinates.map(ring =>
+                    ring.map(coord => [coord[1], coord[0]])
+                ), {
+                    color: '#ffcc00',
+                    weight: 5,
+                    opacity: 0.8
+                }).addTo(map);
+
+                // Zoom to feature bounds
+                map.fitBounds(bounds);
+
+                // Open popup
+                const popupContent = createPopupContent(source, feature);
+                selectedItem.bindPopup(popupContent).openPopup();
+            }
+        }
+
+        // Filter by rectangle
+        function filterByRectangle(feature, source) {
+            showNotification('請使用矩形繪圖工具選擇區域');
+            document.getElementById('drawRectangleBtn').click();
+        }
+
+        // Filter features within rectangle
+        function filterFeaturesByRectangle(bounds) {
+            dataSources.forEach(source => {
+                if (!source.showOnLoad && dataStore[source.id]) {
+                    const features = dataStore[source.id].features || [];
+                    const filteredFeatures = features.filter(feature => {
+                        const lat = feature.geometry.coordinates[1];
+                        const lng = feature.geometry.coordinates[0];
+                        return bounds.contains([lat, lng]);
+                    });
+
+                    // Update map with filtered features
+                    updateMapWithFilteredFeatures(source.id, filteredFeatures);
+                }
+            });
+        }
+
+        // Update map with filtered features
+        function updateMapWithFilteredFeatures(sourceId, features) {
+            const source = dataSources.find(s => s.id === sourceId);
+            if (!source) return;
+
+            // Remove existing layer
+            if (mapLayers[sourceId]) {
+                map.removeLayer(mapLayers[sourceId]);
+            }
+
+            const layer = L.layerGroup();
+
+            features.forEach(feature => {
+                const lat = feature.geometry.coordinates[1];
+                const lng = feature.geometry.coordinates[0];
+
+                const marker = L.circleMarker([lat, lng], {
+                    radius: 8,
+                    fillColor: getColorByIndex(dataSources.findIndex(s => s.id === sourceId)),
+                    color: '#ffffff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                const popupContent = createPopupContent(source, feature);
+                marker.bindPopup(popupContent);
+                layer.addLayer(marker);
+            });
+
+            mapLayers[sourceId] = layer;
+            layer.addTo(map);
+
+            // Update list
+            updateDataSourceList(sourceId, features);
+        }
+
+        // Create popup content
+        function createPopupContent(source, feature) {
+            const props = feature.properties;
+            let content = `<div style="font-weight: bold; margin-bottom: 10px; color: #2c3e50">${source.displayName}</div>`;
+
+            // Add properties based on source type
+            if (source.id === 'ar') {
+                content += `
+                    <div><strong>名稱:</strong> ${props.Name_cn || '未提供'}</div>
+                    <div><strong>地區:</strong> ${props.District_cn || '未提供'}</div>
+                    <div><strong>地址:</strong> ${props.Address_cn || '未提供'}</div>
+                    <div><strong>開放時間:</strong> ${props.Opening_hours_cn || '未提供'}</div>
+                    <div><strong>電話:</strong> ${props.Phone || '未提供'}</div>
+                `;
+            } else if (source.id === 'badminton') {
+                content += `
+                    <div><strong>場地名稱:</strong> ${props.Venue_Name_TC || '未提供'}</div>
+                    <div><strong>地區:</strong> ${props.District_Name_TC || '未提供'}</div>
+                    <div><strong>地址:</strong> ${props.Venue_Address_TC || '未提供'}</div>
+                    <div><strong>電話:</strong> ${props['Venue_Phone_No.'] || '未提供'}</div>
+                `;
+            } else if (source.id === 'bbq') {
+                content += `
+                    <div><strong>名稱:</strong> ${props.NameTC || '未提供'}</div>
+                    <div><strong>地區:</strong> ${props.DistrictTC || '未提供'}</div>
+                    <div><strong>地址:</strong> ${props.AddressTC || '未提供'}</div>
+                    <div><strong>設施:</strong> ${props.FacilityDetailsTC || '未提供'}</div>
+                `;
+            } else if (source.id === 'taxi') {
+                content += `
+                    <div><strong>位置:</strong> ${props.Location_TC || '未提供'}</div>
+                    <div><strong>地區:</strong> ${props.Region_TC} - ${props.District_TC || '未提供'}</div>
+                    <div><strong>類型:</strong> ${props.Status_TC || '未提供'}</div>
+                `;
+            } else if (source.id === 'hiking') {
+                content += `
+                    <div><strong>名稱:</strong> ${props.Trail_name_Ch || '未提供'}</div>
+                    <div><strong>類型:</strong> ${props.Type_Ch || '未提供'}</div>
+                    <div><strong>難度:</strong> ${props.Difficult_Ch || '未提供'}</div>
+                    <div><strong>起點:</strong> ${props.Startpt_Ch || '未提供'}</div>
+                    <div><strong>終點:</strong> ${props.Finishpt_C || '未提供'}</div>
+                `;
+            } else if (source.id === 'food' || source.id === 'restaurant') {
+                content += `
+                    <div><strong>名稱:</strong> ${props.NSEARCH03_TC || '未提供'}</div>
+                    <div><strong>類型:</strong> ${props.NAME_TC || '未提供'}</div>
+                    <div><strong>地址:</strong> ${props.ADDRESS_TC || '未提供'}</div>
+                    <div><strong>地區:</strong> ${props.SEARCH01_TC || '未提供'}</div>
+                `;
+            } else if (source.id === 'parking') {
+                content += `
+                    <div><strong>泊車位編號:</strong> ${props.ParkingSpaceId || '未提供'}</div>
+                    <div><strong>地區:</strong> ${props.Region_tc} - ${props.District_tc || '未提供'}</div>
+                    <div><strong>街道:</strong> ${props.Street_tc || '未提供'}</div>
+                    <div><strong>路段:</strong> ${props.SectionOfStreet_tc || '未提供'}</div>
+                `;
+            } else if (source.id === 'carpark') {
+                content += `
+                    <div><strong>名稱:</strong> ${props.name_tc || '未提供'}</div>
+                    <div><strong>地址:</strong> ${props.displayAddress_tc || '未提供'}</div>
+                    <div><strong>地區:</strong> ${props.district_tc || '未提供'}</div>
+                    <div><strong>電話:</strong> ${props.contactNo || '未提供'}</div>
+                `;
+            }
+
+            return content;
+        }
+
+        // Render data sources list
+        function renderDataSourcesList() {
+            const container = document.getElementById('dataSourcesList');
+            container.innerHTML = '';
+
+            dataSources.forEach(source => {
+                if (!dataStore[source.id]) return;
+
+                const features = dataStore[source.id].features || [];
+
+                // Create data source accordion item
+                const dataAccordion = document.createElement('div');
+                dataAccordion.className = 'data-accordion';
+                dataAccordion.innerHTML = `
+                    <div class="data-header">
+                        <span>
+                            ${source.displayName}
+                            <span class="item-counter">${features.length}</span>
+                        </span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="data-content"></div>
+                `;
+
+                container.appendChild(dataAccordion);
+
+                // Add click event to data header
+                const dataHeader = dataAccordion.querySelector('.data-header');
+                const dataContent = dataAccordion.querySelector('.data-content');
+
+                dataHeader.addEventListener('click', function () {
+                    const isActive = this.classList.contains('active');
+
+                    // Toggle active class
+                    this.classList.toggle('active');
+                    dataContent.classList.toggle('active');
+
+                    // Rotate icon
+                    const icon = this.querySelector('.fa-chevron-down');
+                    icon.style.transform = isActive ? 'rotate(0deg)' : 'rotate(180deg)';
+
+                    // Populate content if not already done
+                    if (!isActive && dataContent.children.length === 0) {
+                        populateDataSourceContent(source, dataContent);
+                    }
+                });
+
+                // Populate initially if active
+                if (source.showOnLoad) {
+                    dataHeader.click();
+                }
+            });
+        }
+
+        // Populate data source content
+        function populateDataSourceContent(source, container) {
+            if (!dataStore[source.id]) return;
+
+            const features = dataStore[source.id].features || [];
+            const groupedData = groupFeatures(features, source.grouping);
+
+            container.innerHTML = '';
+            renderGroupedData(container, groupedData, source, 0);
+        }
+
+        // Group features by specified fields
+        function groupFeatures(features, groupingFields) {
+            if (!groupingFields || groupingFields.length === 0) {
+                return { items: features };
+            }
+
+            const field = groupingFields[0];
+            const remainingFields = groupingFields.slice(1);
+            const groups = {};
+
+            features.forEach(feature => {
+                const key = feature.properties[field] || '未分類';
+                if (!groups[key]) {
+                    groups[key] = [];
+                }
+                groups[key].push(feature);
+            });
+
+            const result = {};
+            Object.keys(groups).forEach(key => {
+                if (remainingFields.length > 0) {
+                    result[key] = groupFeatures(groups[key], remainingFields);
+                } else {
+                    result[key] = { items: groups[key] };
+                }
+            });
+
+            return result;
+        }
+
+        // Render grouped data recursively
+        function renderGroupedData(container, data, source, level) {
+            if (data.items) {
+                // Render items
+                data.items.forEach((feature, index) => {
+                    const item = createDataItem(feature, source, index);
+                    container.appendChild(item);
+                });
+            } else {
+                // Render groups
+                Object.keys(data).forEach(key => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.style.marginBottom = '10px';
+                    groupDiv.style.marginLeft = `${level * 10}px`;
+
+                    const groupHeader = document.createElement('div');
+                    groupHeader.className = 'data-header';
+                    groupHeader.style.cssText = `
+                        background-color: ${level % 2 === 0 ? '#5a9bd5' : '#7bb4e3'};
+                        padding: 8px 12px;
+                        font-size: 0.95rem;
+                    `;
+                    groupHeader.innerHTML = `
+                        <span>
+                            ${key}
+                            <span class="item-counter">${countItems(data[key])}</span>
+                        </span>
+                        <i class="fas fa-chevron-down"></i>
+                    `;
+
+                    const groupContent = document.createElement('div');
+                    groupContent.className = 'data-content';
+                    groupContent.style.cssText = 'padding: 0; overflow: hidden;';
+
+                    groupDiv.appendChild(groupHeader);
+                    groupDiv.appendChild(groupContent);
+                    container.appendChild(groupDiv);
+
+                    // Add click event
+                    groupHeader.addEventListener('click', function () {
+                        const isActive = this.classList.contains('active');
+                        this.classList.toggle('active');
+                        groupContent.classList.toggle('active');
+
+                        const icon = this.querySelector('.fa-chevron-down');
+                        icon.style.transform = isActive ? 'rotate(0deg)' : 'rotate(180deg)';
+
+                        if (!isActive && groupContent.children.length === 0) {
+                            renderGroupedData(groupContent, data[key], source, level + 1);
+                        }
+                    });
+                });
+            }
+        }
+
+        // Count items in nested structure
+        function countItems(data) {
+            if (data.items) {
+                return data.items.length;
+            }
+            let count = 0;
+            Object.keys(data).forEach(key => {
+                count += countItems(data[key]);
+            });
+            return count;
+        }
+
+        // Create data item element
+        function createDataItem(feature, source, index) {
+            const props = feature.properties;
+            const dataItem = document.createElement('div');
+            dataItem.className = 'data-item';
+            dataItem.dataset.sourceId = source.id;
+            dataItem.dataset.featureIndex = index;
+
+            let title = '';
+            if (source.id === 'ar') {
+                title = props.Name_cn || `射箭場 ${index + 1}`;
+            } else if (source.id === 'badminton') {
+                title = props.Venue_Name_TC || `羽毛球場 ${index + 1}`;
+            } else if (source.id === 'bbq') {
+                title = props.NameTC || `燒烤區 ${index + 1}`;
+            } else if (source.id === 'taxi') {
+                title = props.Location_TC || `的士站 ${index + 1}`;
+            } else if (source.id === 'hiking') {
+                title = props.Trail_name_Ch || `遠足徑 ${index + 1}`;
+            } else if (source.id === 'food') {
+                title = props.NSEARCH03_TC || `食物業牌照 ${index + 1}`;
+            } else if (source.id === 'restaurant') {
+                title = props.NSEARCH03_TC || `食肆牌照 ${index + 1}`;
+            } else if (source.id === 'parking') {
+                title = `${props.Street_tc} - ${props.SectionOfStreet_tc}` || `泊車位 ${index + 1}`;
+            } else if (source.id === 'carpark') {
+                title = props.name_tc || `停車場 ${index + 1}`;
+            }
+
+            dataItem.innerHTML = `
+                <div class="data-name">${title}</div>
+                <div class="data-details">
+                    <div class="data-detail-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${getAddress(props, source.id)}</span>
+                    </div>
+                </div>
+            `;
+
+            // Add click event
+            dataItem.addEventListener('click', function () {
+                // Remove active class from all data items
+                document.querySelectorAll('.data-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+
+                // Add active class to clicked item
+                this.classList.add('active');
+
+                // Call event handler
+                if (source.eventHandlers.onItemClick) {
+                    source.eventHandlers.onItemClick(feature, source);
+                }
+            });
+
+            return dataItem;
+        }
+
+        // Get address from properties based on source type
+        function getAddress(props, sourceId) {
+            if (sourceId === 'ar') return props.Address_cn || '地址未提供';
+            if (sourceId === 'badminton') return props.Venue_Address_TC || '地址未提供';
+            if (sourceId === 'bbq') return props.AddressTC || '地址未提供';
+            if (sourceId === 'taxi') return props.Location_TC || '位置未提供';
+            if (sourceId === 'hiking') return `${props.Startpt_Ch} 至 ${props.Finishpt_C}` || '路線未提供';
+            if (sourceId === 'food' || sourceId === 'restaurant') return props.ADDRESS_TC || '地址未提供';
+            if (sourceId === 'parking') return `${props.Street_tc} ${props.SectionOfStreet_tc}` || '位置未提供';
+            if (sourceId === 'carpark') return props.displayAddress_tc || '地址未提供';
+            return '地址未提供';
+        }
+
+        // Update data source list with filtered features
+        function updateDataSourceList(sourceId, features) {
+            const source = dataSources.find(s => s.id === sourceId);
+            if (!source) return;
+
+            // Find the data accordion for this source
+            const accordions = document.querySelectorAll('.data-accordion');
+            accordions.forEach(accordion => {
+                const header = accordion.querySelector('.data-header');
+                if (header.textContent.includes(source.displayName)) {
+                    const content = accordion.querySelector('.data-content');
+                    content.innerHTML = '';
+
+                    if (features.length > 0) {
+                        features.forEach((feature, index) => {
+                            const item = createDataItem(feature, source, index);
+                            content.appendChild(item);
+                        });
+
+                        // Expand if not already expanded
+                        if (!header.classList.contains('active')) {
+                            header.click();
+                        }
+                    } else {
+                        content.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">在選擇區域內沒有找到數據</div>';
+                    }
+                }
+            });
+        }
+
+        // Filter data items based on search input
+        function filterDataItems(searchTerm) {
+            const searchLower = searchTerm.toLowerCase().trim();
+            let visibleCount = 0;
+
+            if (!searchLower) {
+                // Show all items
+                document.querySelectorAll('.data-item').forEach(item => {
+                    item.style.display = 'block';
+                });
+
+                document.querySelectorAll('.data-accordion').forEach(accordion => {
+                    accordion.style.display = 'block';
+                });
+
+                // Count all items
+                dataSources.forEach(source => {
+                    if (dataStore[source.id]) {
+                        const features = dataStore[source.id].features || [];
+                        visibleCount += features.length;
+                    }
+                });
+
+                document.getElementById('visibleItems').textContent = visibleCount;
+                return;
+            }
+
+            // Filter items
+            document.querySelectorAll('.data-item').forEach(item => {
+                const title = item.querySelector('.data-name').textContent.toLowerCase();
+                const address = item.querySelector('.data-details').textContent.toLowerCase();
+
+                if (title.includes(searchLower) || address.includes(searchLower)) {
+                    item.style.display = 'block';
+                    visibleCount++;
+
+                    // Ensure parent accordion is visible and expanded
+                    const dataAccordion = item.closest('.data-accordion');
+                    if (dataAccordion) {
+                        dataAccordion.style.display = 'block';
+
+                        const dataHeader = dataAccordion.querySelector('.data-header');
+                        const dataContent = dataAccordion.querySelector('.data-content');
+
+                        if (!dataHeader.classList.contains('active')) {
+                            dataHeader.click();
+                        }
+                    }
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Hide accordions with no visible items
+            document.querySelectorAll('.data-accordion').forEach(accordion => {
+                const visibleItems = accordion.querySelectorAll('.data-item[style="display: block"]');
+                if (visibleItems.length === 0) {
+                    accordion.style.display = 'none';
+                }
+            });
+
+            // Update visible count
+            document.getElementById('visibleItems').textContent = visibleCount;
+        }
+
+        // Update statistics display
+        function updateStats() {
+            let totalItems = 0;
+            dataSources.forEach(source => {
+                if (dataStore[source.id]) {
+                    const features = dataStore[source.id].features || [];
+                    totalItems += features.length;
+                }
+            });
+
+            document.getElementById('totalItems').textContent = totalItems;
+            document.getElementById('visibleItems').textContent = totalItems;
+        }
+
+        // Get color by index
+        function getColorByIndex(index) {
+            const colors = ['#ff6b6b', '#4a90e2', '#27ae60', '#f39c12', '#9b59b6', '#e74c3c', '#3498db', '#1abc9c', '#e67e22'];
+            return colors[index % colors.length];
+        }
+
+        // Show temporary notification
+        function showNotification(message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background-color: #2c6c91;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 10000;
+                font-weight: 500;
+                max-width: 300px;
+                animation: fadeInOut 3s ease-in-out;
+            `;
+
+            // Add keyframes for animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translateY(-10px); }
+                    10% { opacity: 1; transform: translateY(0); }
+                    90% { opacity: 1; transform: translateY(0); }
+                    100% { opacity: 0; transform: translateY(-10px); }
+                }
+            `;
+            document.head.appendChild(style);
+
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Remove after animation completes
+            setTimeout(() => {
+                notification.remove();
+                style.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>
